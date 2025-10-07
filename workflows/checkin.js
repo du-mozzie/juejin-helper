@@ -231,9 +231,11 @@ class CheckIn {
   username = "";
   loginFailed = false;
   loginErrorMessage = "";
+  userIndex = 1;
 
-  constructor(cookie) {
+  constructor(cookie, index = 1) {
     this.cookie = cookie;
+    this.userIndex = index;
   }
 
   async run() {
@@ -248,7 +250,15 @@ class CheckIn {
       // 登录失败时直接推送通知并结束当前用户流程
       notification.pushMessage({
         title: "掘金每日签到",
-        content: `<strong>登录失败</strong><pre>${msg}</pre>`,
+        content: [
+          `<strong>登录失败</strong>`,
+          `<pre>用户序号：#${this.userIndex}\n原因：${msg}</pre>`,
+          `<ul style="margin:0;padding-left:18px;">`,
+          `<li>请确认 Cookies 未过期（重新在浏览器获取完整 Cookie）</li>`,
+          `<li>确保环境变量 COOKIE（或 COOKIE_2..COOKIE_5）填写为完整 Cookie 串</li>`,
+          `<li>若为风控，需要先在网页端完成验证码或重新登录</li>`,
+          `</ul>`
+        ].join(""),
         msgtype: "html"
       });
       return 0;
@@ -332,14 +342,23 @@ async function run(args) {
   if (!cookies || cookies.length === 0) {
     notification.pushMessage({
       title: "掘金每日签到",
-      content: `<strong>参数错误</strong><pre>未配置有效的 COOKIE 环境变量</pre>`,
+      content: [
+        `<strong>参数错误：未发现有效 Cookie</strong>`,
+        `<pre>未检测到 COOKIE 或 COOKIE_2..COOKIE_5 环境变量</pre>`,
+        `<ul style="margin:0;padding-left:18px;">`,
+        `<li>在运行环境中设置 COOKIE（浏览器复制完整 Cookie）</li>`,
+        `<li>如多账号，设置 COOKIE_2 至 COOKIE_5</li>`,
+        `<li>GitHub Actions 请在仓库 Secrets 中配置对应变量</li>`,
+        `</ul>`
+      ].join(""),
       msgtype: "html"
     });
     return;
   }
   let messageList = [];
-  for (let cookie of cookies) {
-    const checkin = new CheckIn(cookie);
+  for (let i = 0; i < cookies.length; i++) {
+    const cookie = cookies[i];
+    const checkin = new CheckIn(cookie, i + 1);
 
     await utils.wait(utils.randomRangeNumber(1000, 5000)); // 初始等待1-5s
     await checkin.run(); // 执行
