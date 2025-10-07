@@ -318,6 +318,14 @@ ${this.lotteriesTask.lotteryCount > 0 ? "==============\n" + drawLotteryHistory 
 
 async function run(args) {
   const cookies = utils.getUsersCookie(env);
+  if (!cookies || cookies.length === 0) {
+    notification.pushMessage({
+      title: "掘金每日签到",
+      content: `<strong>参数错误</strong><pre>未配置有效的 COOKIE 环境变量</pre>`,
+      msgtype: "html"
+    });
+    return;
+  }
   let messageList = [];
   for (let cookie of cookies) {
     const checkin = new CheckIn(cookie);
@@ -358,6 +366,5 @@ run(process.argv.splice(2)).catch(error => {
     content: `<strong>Error</strong><pre>${error.message}</pre>`,
     msgtype: "html"
   });
-
-  throw error;
+  // 已推送错误通知，此处不再抛出错误以避免流程失败
 });
