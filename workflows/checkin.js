@@ -361,16 +361,30 @@ async function run(args) {
     const checkin = new CheckIn(cookie, i + 1);
 
     await utils.wait(utils.randomRangeNumber(1000, 5000)); // 初始等待1-5s
-    await checkin.run(); // 执行
-    if (checkin.loginFailed) {
-      // 登录失败已在内部推送，跳过该用户
+    try {
+      await checkin.run(); // 执行
+      if (checkin.loginFailed) {
+        // 登录失败已在内部推送，跳过该用户
+        continue;
+      }
+
+      const content = checkin.toString();
+      console.log(content); // 打印结果
+      messageList.push(content);
+    } catch (e) {
+      const msg = (e && e.message) || String(e);
+      console.error(msg);
+      notification.pushMessage({
+        title: "掘金每日签到",
+        content: [
+          `<strong>执行失败</strong>`,
+          `<pre>用户序号：#${i + 1}\n原因：${msg}</pre>`
+        ].join(""),
+        msgtype: "html"
+      });
+      // 不中断其它账户执行
       continue;
     }
-
-    const content = checkin.toString();
-    console.log(content); // 打印结果
-
-    messageList.push(content);
   }
 
   const message = messageList.join(`\n${"-".repeat(15)}\n`);
