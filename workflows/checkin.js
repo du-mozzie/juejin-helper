@@ -229,6 +229,8 @@ class MockVisitTask extends Task {
 class CheckIn {
   cookie = "";
   username = "";
+  loginFailed = false;
+  loginErrorMessage = "";
 
   constructor(cookie) {
     this.cookie = cookie;
@@ -239,8 +241,17 @@ class CheckIn {
     try {
       await juejin.login(this.cookie);
     } catch (e) {
-      console.error(e.message);
-      throw new Error("登录失败, 请尝试更新Cookies!");
+      const msg = (e && e.message) || "登录失败, 请尝试更新Cookies!";
+      console.error(msg);
+      this.loginFailed = true;
+      this.loginErrorMessage = msg;
+      // 登录失败时直接推送通知并结束当前用户流程
+      notification.pushMessage({
+        title: "掘金每日签到",
+        content: `<strong>登录失败</strong><pre>${msg}</pre>`,
+        msgtype: "html"
+      });
+      return 0;
     }
 
     this.username = juejin.getUser().user_name;
@@ -331,25 +342,16 @@ async function run(args) {
     const checkin = new CheckIn(cookie);
 
     await utils.wait(utils.randomRangeNumber(1000, 5000)); // 初始等待1-5s
-    try {
-      await checkin.run(); // 执行
-
-      const content = checkin.toString();
-      console.log(content); // 打印结果
-
-      messageList.push(content);
-    } catch (error) {
-      const msg = (error && error.message) || String(error);
-      console.error(msg);
-      if (msg.includes("登录失败")) {
-        notification.pushMessage({
-          title: "掘金每日签到",
-          content: `<strong>登录失败</strong><pre>${msg}</pre>`,
-          msgtype: "html"
-        });
-      }
+    await checkin.run(); // 执行
+    if (checkin.loginFailed) {
+      // 登录失败已在内部推送，跳过该用户
       continue;
     }
+
+    const content = checkin.toString();
+    console.log(content); // 打印结果
+
+    messageList.push(content);
   }
 
   const message = messageList.join(`\n${"-".repeat(15)}\n`);
